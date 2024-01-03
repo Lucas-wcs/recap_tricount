@@ -1,153 +1,146 @@
 
 import "./App.css";
 import axios from "axios";
-import {Form, redirect, useFetcher, useLoaderData, useNavigation, useRevalidator} from "react-router-dom";
+import {useLoaderData, useRevalidator} from "react-router-dom";
 import {useEffect, useRef, useState} from "react";
 
 function App() {
 
-    const pokemons = useLoaderData()
+    const voyages = useLoaderData()
+
+    const ref = useRef()
 
     const revalidator = useRevalidator()
 
-    const navigation = useNavigation()
+    const [libelle, setLibelle] = useState("")
+    const [montant, setMontant] = useState(0)
+    const [nom, setNom] = useState("")
+    const [voyageurs, setVoyageurs] = useState([])
+    const [selectedUser, setSelectedUser] = useState("")
 
-    const fetcher = useFetcher()
-
-
-
-    const [pokemonId, setPokemonId] = useState(undefined)
-    const [selectedPokemon, setSelectedPokemon] = useState("")
-    const [pokemonName, setPokemonName] = useState("")
-    const [pokemonDescription, setPokemonDescription] = useState("")
+    const fetchVoyageurs = () => {
+        axios.get("http://localhost:5000/voyageur")
+            .then((res) => {
+                setVoyageurs(res.data)
+            })
+            .catch((err) => console.log(err))
+    }
 
     useEffect(() => {
-        if(selectedPokemon !== "") {
-            loadPokemonById()
+        fetchVoyageurs()
+    }, [])
+
+    const handleAdd = async () => {
+        if(ref.current) {
+            const nom = ref.current.value
+            try {
+                const res = await axios.post("http://localhost:5000/voyage", {nom})
+
+                revalidator.revalidate()
+
+            } catch(e) {
+                alert("Insertion échouée")
+            }
         }
-    }, [selectedPokemon])
+    }
 
-    const loadPokemonById = async () => {
+    const handleAddDepense = async (voyageId) => {
         try {
-            const pokemon = await axios.get(`http://localhost:5000/pokemons/${selectedPokemon}`)
+            if(selectedUser !== "") {
+                const res = await axios.post("http://localhost:5000/depense", {voyageur_id: selectedUser, libelle, montant, voyage_id: voyageId})
 
-            setPokemonId(pokemon.data)
-            setPokemonName(pokemon.data.nom)
-            setPokemonDescription(pokemon.data.description)
+                setLibelle("")
+                setMontant("")
+                setNom("")
+                setSelectedUser("")
+                revalidator.revalidate()
+            } else {
+                const res = await axios.post("http://localhost:5000/depense", {nom, libelle, montant, voyage_id: voyageId})
 
+                setLibelle("")
+                setMontant("")
+                setNom("")
+                setSelectedUser("")
+                revalidator.revalidate()
+                fetchVoyageurs()
+            }
         } catch(e) {
-            console.log(e)
+            alert("Insertion échouée")
         }
     }
-
-    const handleEdit = async (e) => {
-        e.preventDefault()
-
-        const nom = pokemonName
-        const description = pokemonDescription
-
-        try {
-            const res = await axios.put(`http://localhost:5000/pokemons/${selectedPokemon}`, {nom, description})
-
-            revalidator.revalidate()
-        } catch(e) {
-            console.log(e)
-        }
-
-    }
-
-    const handleDelete = async (id) => {
-        try {
-            await axios.delete(`http://localhost:5000/pokemons/${id}`)
-
-            revalidator.revalidate()
-
-        }catch(e) {
-            console.log(e)
-        }
-    }
-
 
   return (
-    <div className="App">
-      Voila
-        {fetcher.state === "submitting" ? <>Submitting...</> : fetcher.state === "loading" ? <>Loading...</> : ""}
-        {pokemons.map((pokemon) => <div key={pokemon.id}>{pokemon.nom} {pokemon.description} <button onClick={() => handleDelete(pokemon.id)}>delete</button></div>)}
-
-
-        <select onInput={(e) => setSelectedPokemon(e.target.value)}>
-            <option value={""}>--</option>
-            {pokemons.map((pokemon) => <option value={pokemon.id}>{pokemon.nom}</option>)}
-        </select>
-        <br/><br/>
-        {pokemonId &&
-            <>
-                <fetcher.Form method={"put"}>
-                    <input type={"hidden"} value={selectedPokemon} name={"id"}/>
-                    <input type={"text"} placeholder={"nom"} name={"nom"} value={pokemonName} onInput={(e) => setPokemonName(e.target.value)}/>
-                    <input type={"text"} placeholder={"description"} name={"description"} value={pokemonDescription} onInput={(e) => setPokemonDescription(e.target.value)}/>
-                    <button type={"submit"}>valider</button>
-                </fetcher.Form>
-
-            </>
+    <div className="App" style={{padding: "50px", display: "flex", gap: "20px"}}>
+        {
+            voyages.map((voyage) => {
+                return <div key={voyage.id} style={{border: "1px black solid", padding: "5px", borderRadius: "5px", width: "fit-content", height: "fit-content"}}>
+                    <p>{voyage.nom}</p>
+                    <p>LISTE DES DEPENSES </p>
+                    {
+                        voyage.depense.map((d) => {
+                            return <div key={d.id} style={{border: "1px black solid", padding: "5px", borderRadius: "5px", margin: "5px"}}>
+                                <p>{d.libelle}</p>
+                                <p>{d.montant} €</p>
+                                <p>{d.voyageurNom}</p>
+                            </div>
+                        })
+                    }
+                    <div style={{border: "1px black solid", padding: "5px", borderRadius: "5px", width: "fit-content", height: "fit-content"}}>
+                        <input type={"text"} placeholder={"libelle"} value={libelle} onInput={(e) => setLibelle(e.target.value)}/>
+                        <input type={"number"} placeholder={"montant"} value={montant} onInput={(e) => setMontant(e.target.value)}/>
+                        <input type={"text"} placeholder={"nom du voyageur"} value={nom} onInput={(e) => setNom(e.target.value)}/>
+                        <select value={selectedUser} onInput={(e) => setSelectedUser(e.target.value)}>
+                            <option value={""}>---</option>
+                            {voyageurs.filter((voyageur) => {
+                                return voyageur.voyage_id === voyage.id
+                            })
+                                .map((voyageur) => {
+                                    return <option key={voyageur.id} value={voyageur.id}>{voyageur.nom}</option>
+                                })
+                            }
+                        </select>
+                        <button onClick={() => handleAddDepense(voyage.id)}>créer la dépense</button>
+                    </div>
+                    <div>
+                        {
+                            voyage.voyageurs.length > 0 && <div>
+                                <p>Le voyageur a avoir le plus dépensé est : {voyage.voyageurs[0].voyageurNom}</p>
+                                <p>Il/Elle a dépensé {voyage.voyageurs[0].total} €</p>
+                                {
+                                    voyage.voyageurs.length > 1 && <>
+                                    {
+                                        voyage.voyageurs.map((voyageur, index) => {
+                                            if(index > 0) {
+                                                return <div>
+                                                    <p>Voyageur : {voyageur.voyageurNom} doit payer à {voyage.voyageurs[0].voyageurNom} le montant suivant : {voyage.voyageurs.length === 2 ? voyage.voyageurs[0].total/2 - voyageur.total / 2 : (voyage.voyageurs[0].total / (voyage.voyageurs.length - 1)) - voyageur.total/ (voyage.voyageurs.length - 1)} €</p>
+                                                </div>
+                                            }
+                                        })
+                                    }
+                                    </>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            })
         }
-        <br/><br/>
-
-
-        <fetcher.Form method={"post"}>
-            <input type={"text"} placeholder={"nom"} name={"nom"}/>
-            <input type={"text"} placeholder={"description"} name={"description"}/>
-            <button type={"submit"}>valider</button>
-        </fetcher.Form>
+        <input ref={ref} type={"text"} name={"nom"} placeholder={"nom du voyage"} style={{border: "1px black solid", padding: "5px", borderRadius: "5px", width: "fit-content", height: "fit-content"}}/>
+        <button onClick={handleAdd} style={{border: "1px black solid", padding: "5px", borderRadius: "5px", width: "fit-content", height: "fit-content"}}>+</button>
     </div>
   );
 }
 
-export const pokemonLoader = async () => {
-    try {
-        const pokemons = await axios.get("http://localhost:5000/pokemons")
+export const voyageLoader = async () => {
+  try {
 
-        return pokemons.data
+      const res = await axios.get("http://localhost:5000/voyage")
 
-    } catch(e) {
-        console.log(e)
-        return []
-    }
-}
+      return res.data
 
-export const pokemonAction = async ({request}) => {
-
-    if(request.method === "POST") {
-
-        try {
-
-            const formData = await request.formData()
-            const nom = formData.get("nom")
-            const description = formData.get("description")
-
-            return await axios.post("http://localhost:5000/pokemons", {nom, description})
-
-        }catch(e) {
-            console.log(e)
-        }
-
-    } else if(request.method === "PUT") {
-        try {
-
-            const formData = await request.formData()
-            const nom = formData.get("nom")
-            const description = formData.get("description")
-            const id = formData.get("id")
-
-            console.log(id, nom, description)
-            return await axios.put(`http://localhost:5000/pokemons/${id}`, {nom, description})
-
-        }catch(e) {
-            console.log(e)
-            return null
-        }
-    }
-
+  } catch(e) {
+      return []
+  }
 
 }
 

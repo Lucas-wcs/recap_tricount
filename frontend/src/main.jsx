@@ -1,15 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import App, {pokemonAction, pokemonLoader} from "./App";
+import App, {voyageLoader} from "./App";
 import {createBrowserRouter, RouterProvider} from "react-router-dom";
 
 const router = createBrowserRouter([
     {
         path: "/",
         element: <App/>,
-        loader: pokemonLoader,
-        action: pokemonAction
+        loader: voyageLoader,
     }
 ])
 

@@ -1,6 +1,23 @@
-CREATE TABLE item (
-  id int(11) UNSIGNED PRIMARY KEY NOT NULL AUTO_INCREMENT,
-  title varchar(255) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+CREATE TABLE voyage(
+    id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    nom VARCHAR(50)
+);
 
-INSERT INTO item (title) VALUES ('Stuff'), ('Doodads');
+
+CREATE TABLE voyageur(
+    id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    nom VARCHAR(50),
+    voyage_id INT,
+    CONSTRAINT FOREIGN KEY (voyage_id) REFERENCES voyage(id)
+);
+
+
+CREATE TABLE depense(
+    id INT PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    libelle VARCHAR(50),
+    montant INT,
+    voyage_id INT,
+    voyageur_id INT,
+    CONSTRAINT FOREIGN KEY (voyage_id) REFERENCES voyage(id),
+    CONSTRAINT FOREIGN KEY (voyageur_id) REFERENCES voyageur(id)
+);
